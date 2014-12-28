@@ -6,7 +6,7 @@ describe('ngMock', function() {
   describe('TzDate', function() {
 
     function minutes(min) {
-      return min*60*1000;
+      return min * 60 * 1000;
     }
 
     it('should look like a Date', function() {
@@ -321,11 +321,15 @@ describe('ngMock', function() {
         inject(function($interval, $rootScope) {
       var applySpy = spyOn($rootScope, '$apply').andCallThrough();
 
-      $interval(noop, 1000, 0, false);
+      var counter = 0;
+      $interval(function increment() { counter++; }, 1000, 0, false);
+
       expect(applySpy).not.toHaveBeenCalled();
+      expect(counter).toBe(0);
 
       $interval.flush(2000);
       expect(applySpy).not.toHaveBeenCalled();
+      expect(counter).toBe(2);
     }));
 
 
@@ -533,7 +537,7 @@ describe('ngMock', function() {
 
     function logFn(text) {
       return function() {
-        log += text +';';
+        log += text + ';';
       };
     }
 
@@ -588,22 +592,42 @@ describe('ngMock', function() {
     }));
 
 
-    it('should log exceptions', module(function($exceptionHandlerProvider) {
-      $exceptionHandlerProvider.mode('log');
-      var $exceptionHandler = $exceptionHandlerProvider.$get();
-      $exceptionHandler('MyError');
-      expect($exceptionHandler.errors).toEqual(['MyError']);
+    it('should log exceptions', function() {
+      module(function($exceptionHandlerProvider) {
+        $exceptionHandlerProvider.mode('log');
+      });
+      inject(function($exceptionHandler) {
+        $exceptionHandler('MyError');
+        expect($exceptionHandler.errors).toEqual(['MyError']);
 
-      $exceptionHandler('MyError', 'comment');
-      expect($exceptionHandler.errors[1]).toEqual(['MyError', 'comment']);
-    }));
+        $exceptionHandler('MyError', 'comment');
+        expect($exceptionHandler.errors[1]).toEqual(['MyError', 'comment']);
+      });
+    });
 
+    it('should log and rethrow exceptions', function() {
+      module(function($exceptionHandlerProvider) {
+        $exceptionHandlerProvider.mode('rethrow');
+      });
+      inject(function($exceptionHandler) {
+        expect(function() { $exceptionHandler('MyError'); }).toThrow('MyError');
+        expect($exceptionHandler.errors).toEqual(['MyError']);
 
-    it('should throw on wrong argument', module(function($exceptionHandlerProvider) {
-      expect(function() {
-        $exceptionHandlerProvider.mode('XXX');
-      }).toThrow("Unknown mode 'XXX', only 'log'/'rethrow' modes are allowed!");
-    }));
+        expect(function() { $exceptionHandler('MyError', 'comment'); }).toThrow('MyError');
+        expect($exceptionHandler.errors[1]).toEqual(['MyError', 'comment']);
+      });
+    });
+
+    it('should throw on wrong argument', function() {
+      module(function($exceptionHandlerProvider) {
+        expect(function() {
+          $exceptionHandlerProvider.mode('XXX');
+        }).toThrow("Unknown mode 'XXX', only 'log'/'rethrow' modes are allowed!");
+      });
+
+      inject(); // Trigger the tests in `module`
+    });
+
   });
 
 
@@ -1055,17 +1079,6 @@ describe('ngMock', function() {
         expect(callback).toHaveBeenCalledOnceWith(200, 'first', 'header: val', 'OK');
       });
 
-      it('should take function', function() {
-        hb.expect('GET', '/some').respond(function(m, u, d, h) {
-          return [301, m + u + ';' + d + ';a=' + h.a, {'Connection': 'keep-alive'}, 'Moved Permanently'];
-        });
-
-        hb('GET', '/some', 'data', callback, {a: 'b'});
-        hb.flush();
-
-        expect(callback).toHaveBeenCalledOnceWith(301, 'GET/some;data;a=b', 'Connection: keep-alive', 'Moved Permanently');
-      });
-
       it('should default status code to 200', function() {
         callback.andCallFake(function(status, response) {
           expect(status).toBe(200);
@@ -1081,6 +1094,24 @@ describe('ngMock', function() {
         expect(callback.callCount).toBe(2);
       });
 
+      it('should default status code to 200 and provide status text', function() {
+        hb.expect('GET', '/url1').respond('first', {'header': 'val'}, 'OK');
+        hb('GET', '/url1', null, callback);
+        hb.flush();
+
+        expect(callback).toHaveBeenCalledOnceWith(200, 'first', 'header: val', 'OK');
+      });
+
+      it('should take function', function() {
+        hb.expect('GET', '/some').respond(function(m, u, d, h) {
+          return [301, m + u + ';' + d + ';a=' + h.a, {'Connection': 'keep-alive'}, 'Moved Permanently'];
+        });
+
+        hb('GET', '/some', 'data', callback, {a: 'b'});
+        hb.flush();
+
+        expect(callback).toHaveBeenCalledOnceWith(301, 'GET/some;data;a=b', 'Connection: keep-alive', 'Moved Permanently');
+      });
 
       it('should default response headers to ""', function() {
         hb.expect('GET', '/url1').respond(200, 'first');
@@ -1299,6 +1330,18 @@ describe('ngMock', function() {
     });
 
 
+    it('should abort requests when timeout passed as a numeric value', inject(function($timeout) {
+      hb.expect('GET', '/url1').respond(200);
+
+      hb('GET', '/url1', null, callback, null, 200);
+      $timeout.flush(300);
+
+      expect(callback).toHaveBeenCalledWith(-1, undefined, '');
+      hb.verifyNoOutstandingExpectation();
+      hb.verifyNoOutstandingRequest();
+    }));
+
+
     it('should throw an exception if no response defined', function() {
       hb.when('GET', '/test');
       expect(function() {
@@ -1506,6 +1549,174 @@ describe('ngMock', function() {
     it('should create mock application root', inject(function($rootElement) {
       expect($rootElement.text()).toEqual('');
     }));
+  });
+
+
+  describe('$rootScopeDecorator', function() {
+
+    describe('$countChildScopes', function() {
+
+      it('should return 0 when no child scopes', inject(function($rootScope) {
+        expect($rootScope.$countChildScopes()).toBe(0);
+
+        var childScope = $rootScope.$new();
+        expect($rootScope.$countChildScopes()).toBe(1);
+        expect(childScope.$countChildScopes()).toBe(0);
+
+        var grandChildScope = childScope.$new();
+        expect(childScope.$countChildScopes()).toBe(1);
+        expect(grandChildScope.$countChildScopes()).toBe(0);
+      }));
+
+
+      it('should correctly navigate complex scope tree', inject(function($rootScope) {
+        var child;
+
+        $rootScope.$new();
+        $rootScope.$new().$new().$new();
+        child = $rootScope.$new().$new();
+        child.$new();
+        child.$new();
+        child.$new().$new().$new();
+
+        expect($rootScope.$countChildScopes()).toBe(11);
+      }));
+
+
+      it('should provide the current count even after child destructions', inject(function($rootScope) {
+        expect($rootScope.$countChildScopes()).toBe(0);
+
+        var childScope1 = $rootScope.$new();
+        expect($rootScope.$countChildScopes()).toBe(1);
+
+        var childScope2 = $rootScope.$new();
+        expect($rootScope.$countChildScopes()).toBe(2);
+
+        childScope1.$destroy();
+        expect($rootScope.$countChildScopes()).toBe(1);
+
+        childScope2.$destroy();
+        expect($rootScope.$countChildScopes()).toBe(0);
+      }));
+
+
+      it('should work with isolate scopes', inject(function($rootScope) {
+        /*
+                  RS
+                  |
+                 CIS
+                /   \
+              GCS   GCIS
+         */
+
+        var childIsolateScope = $rootScope.$new(true);
+        expect($rootScope.$countChildScopes()).toBe(1);
+
+        var grandChildScope = childIsolateScope.$new();
+        expect($rootScope.$countChildScopes()).toBe(2);
+        expect(childIsolateScope.$countChildScopes()).toBe(1);
+
+        var grandChildIsolateScope = childIsolateScope.$new(true);
+        expect($rootScope.$countChildScopes()).toBe(3);
+        expect(childIsolateScope.$countChildScopes()).toBe(2);
+
+        childIsolateScope.$destroy();
+        expect($rootScope.$countChildScopes()).toBe(0);
+      }));
+    });
+
+
+    describe('$countWatchers', function() {
+
+      it('should return the sum of watchers for the current scope and all of its children', inject(
+        function($rootScope) {
+
+          expect($rootScope.$countWatchers()).toBe(0);
+
+          var childScope = $rootScope.$new();
+          expect($rootScope.$countWatchers()).toBe(0);
+
+          childScope.$watch('foo');
+          expect($rootScope.$countWatchers()).toBe(1);
+          expect(childScope.$countWatchers()).toBe(1);
+
+          $rootScope.$watch('bar');
+          childScope.$watch('baz');
+          expect($rootScope.$countWatchers()).toBe(3);
+          expect(childScope.$countWatchers()).toBe(2);
+      }));
+
+
+      it('should correctly navigate complex scope tree', inject(function($rootScope) {
+        var child;
+
+        $rootScope.$watch('foo1');
+
+        $rootScope.$new();
+        $rootScope.$new().$new().$new();
+
+        child = $rootScope.$new().$new();
+        child.$watch('foo2');
+        child.$new();
+        child.$new();
+        child = child.$new().$new().$new();
+        child.$watch('foo3');
+        child.$watch('foo4');
+
+        expect($rootScope.$countWatchers()).toBe(4);
+      }));
+
+
+      it('should provide the current count even after child destruction and watch deregistration',
+          inject(function($rootScope) {
+
+        var deregisterWatch1 = $rootScope.$watch('exp1');
+
+        var childScope = $rootScope.$new();
+        childScope.$watch('exp2');
+
+        expect($rootScope.$countWatchers()).toBe(2);
+
+        childScope.$destroy();
+        expect($rootScope.$countWatchers()).toBe(1);
+
+        deregisterWatch1();
+        expect($rootScope.$countWatchers()).toBe(0);
+      }));
+
+
+      it('should work with isolate scopes', inject(function($rootScope) {
+        /*
+                 RS=1
+                   |
+                CIS=1
+                /    \
+            GCS=1  GCIS=1
+         */
+
+        $rootScope.$watch('exp1');
+        expect($rootScope.$countWatchers()).toBe(1);
+
+        var childIsolateScope = $rootScope.$new(true);
+        childIsolateScope.$watch('exp2');
+        expect($rootScope.$countWatchers()).toBe(2);
+        expect(childIsolateScope.$countWatchers()).toBe(1);
+
+        var grandChildScope = childIsolateScope.$new();
+        grandChildScope.$watch('exp3');
+
+        var grandChildIsolateScope = childIsolateScope.$new(true);
+        grandChildIsolateScope.$watch('exp4');
+
+        expect($rootScope.$countWatchers()).toBe(4);
+        expect(childIsolateScope.$countWatchers()).toBe(3);
+        expect(grandChildScope.$countWatchers()).toBe(1);
+        expect(grandChildIsolateScope.$countWatchers()).toBe(1);
+
+        childIsolateScope.$destroy();
+        expect($rootScope.$countWatchers()).toBe(1);
+      }));
+    });
   });
 });
 

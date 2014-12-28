@@ -70,6 +70,36 @@ describe('$route', function() {
     });
   });
 
+  it('should allow redirects while handling $routeChangeStart', function() {
+    module(function($routeProvider) {
+      $routeProvider.when('/some', {
+        id: 'some', template: 'Some functionality'
+      });
+      $routeProvider.when('/redirect', {
+        id: 'redirect'
+      });
+    });
+    module(provideLog);
+    inject(function($route, $location, $rootScope, $compile, log) {
+      $rootScope.$on('$routeChangeStart', function(event, next, current) {
+        if (next.id === 'some') {
+          $location.path('/redirect');
+        }
+      });
+      $compile('<div><div ng-view></div></div>')($rootScope);
+      $rootScope.$on('$routeChangeStart', log.fn('routeChangeStart'));
+      $rootScope.$on('$routeChangeError', log.fn('routeChangeError'));
+      $rootScope.$on('$routeChangeSuccess', log.fn('routeChangeSuccess'));
+      $rootScope.$apply(function() {
+        $location.path('/some');
+      });
+
+      expect($route.current.id).toBe('redirect');
+      expect($location.path()).toBe('/redirect');
+      expect(log).toEqual(['routeChangeStart', 'routeChangeStart', 'routeChangeSuccess']);
+    });
+  });
+
   it('should route and fire change event', function() {
     var log = '',
         lastRoute,
@@ -237,6 +267,31 @@ describe('$route', function() {
     });
   });
 
+  it('should allow configuring caseInsensitiveMatch on the route provider level', function() {
+    module(function($routeProvider) {
+      $routeProvider.caseInsensitiveMatch = true;
+      $routeProvider.when('/Blank', {template: 'blank'});
+      $routeProvider.otherwise({template: 'other'});
+    });
+    inject(function($route, $location, $rootScope) {
+      $location.path('/bLaNk');
+      $rootScope.$digest();
+      expect($route.current.template).toBe('blank');
+    });
+  });
+
+  it('should allow overriding provider\'s caseInsensitiveMatch setting on the route level', function() {
+    module(function($routeProvider) {
+      $routeProvider.caseInsensitiveMatch = true;
+      $routeProvider.when('/Blank', {template: 'blank', caseInsensitiveMatch: false});
+      $routeProvider.otherwise({template: 'other'});
+    });
+    inject(function($route, $location, $rootScope) {
+      $location.path('/bLaNk');
+      $rootScope.$digest();
+      expect($route.current.template).toBe('other');
+    });
+  });
 
   it('should not change route when location is canceled', function() {
     module(function($routeProvider) {
@@ -271,13 +326,13 @@ describe('$route', function() {
       expect($route.current).toBeUndefined();
     }));
 
-    it('matches literal *', inject(function($route, $location, $rootScope) {
+    it('matches literal .', inject(function($route, $location, $rootScope) {
       $location.path('/$testX23/foo*(bar)/222');
       $rootScope.$digest();
       expect($route.current).toBeUndefined();
     }));
 
-    it('matches literal .', inject(function($route, $location, $rootScope) {
+    it('matches literal *', inject(function($route, $location, $rootScope) {
       $location.path('/$test.23/foooo(bar)/222');
       $rootScope.$digest();
       expect($route.current).toBeUndefined();
@@ -914,6 +969,29 @@ describe('$route', function() {
 
         expect($location.path()).toEqual('/bar/id3/sid1/99');
         expect($location.search()).toEqual({appended: 'true', extra: 'eId'});
+        expect($route.current.templateUrl).toEqual('bar.html');
+      });
+    });
+
+
+    it('should properly interpolate optional and eager route vars ' +
+       'when redirecting from path with trailing slash', function() {
+      module(function($routeProvider) {
+        $routeProvider.when('/foo/:id?/:subid?', {templateUrl: 'foo.html'});
+        $routeProvider.when('/bar/:id*/:subid', {templateUrl: 'bar.html'});
+      });
+
+      inject(function($location, $rootScope, $route) {
+        $location.path('/foo/id1/subid2/');
+        $rootScope.$digest();
+
+        expect($location.path()).toEqual('/foo/id1/subid2');
+        expect($route.current.templateUrl).toEqual('foo.html');
+
+        $location.path('/bar/id1/extra/subid2/');
+        $rootScope.$digest();
+
+        expect($location.path()).toEqual('/bar/id1/extra/subid2');
         expect($route.current.templateUrl).toEqual('bar.html');
       });
     });

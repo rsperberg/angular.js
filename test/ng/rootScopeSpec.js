@@ -296,13 +296,13 @@ describe('Scope', function() {
 
         expect(function() {
           $rootScope.$digest();
-        }).toThrowMinErr('$rootScope', 'infdig', '100 $digest() iterations reached. Aborting!\n'+
+        }).toThrowMinErr('$rootScope', 'infdig', '100 $digest() iterations reached. Aborting!\n' +
             'Watchers fired in the last 5 iterations: ' +
-            '[["a; newVal: 96; oldVal: 95","b; newVal: 97; oldVal: 96"],' +
-            '["a; newVal: 97; oldVal: 96","b; newVal: 98; oldVal: 97"],' +
-            '["a; newVal: 98; oldVal: 97","b; newVal: 99; oldVal: 98"],' +
-            '["a; newVal: 99; oldVal: 98","b; newVal: 100; oldVal: 99"],' +
-            '["a; newVal: 100; oldVal: 99","b; newVal: 101; oldVal: 100"]]');
+            '[[{"msg":"a","newVal":96,"oldVal":95},{"msg":"b","newVal":97,"oldVal":96}],' +
+            '[{"msg":"a","newVal":97,"oldVal":96},{"msg":"b","newVal":98,"oldVal":97}],' +
+            '[{"msg":"a","newVal":98,"oldVal":97},{"msg":"b","newVal":99,"oldVal":98}],' +
+            '[{"msg":"a","newVal":99,"oldVal":98},{"msg":"b","newVal":100,"oldVal":99}],' +
+            '[{"msg":"a","newVal":100,"oldVal":99},{"msg":"b","newVal":101,"oldVal":100}]]');
 
         expect($rootScope.$$phase).toBeNull();
       });
@@ -341,7 +341,7 @@ describe('Scope', function() {
 
         expect(function() {
           $rootScope.$digest();
-        }).toThrowMinErr('$rootScope', 'infdig', '10 $digest() iterations reached. Aborting!\n'+
+        }).toThrowMinErr('$rootScope', 'infdig', '10 $digest() iterations reached. Aborting!\n' +
                 'Watchers fired in the last 5 iterations: []');
 
         expect($rootScope.$$phase).toBeNull();
@@ -1241,6 +1241,13 @@ describe('Scope', function() {
       $rootScope.$evalAsync("log = log + 2");
       $rootScope.$digest();
       expect($rootScope.log).toBe('12');
+    }));
+
+    it('should allow passing locals to the expression', inject(function($rootScope) {
+      $rootScope.log = '';
+      $rootScope.$evalAsync('log = log + a', {a: 1});
+      $rootScope.$digest();
+      expect($rootScope.log).toBe('1');
     }));
 
     it('should run async expressions in their proper context', inject(function($rootScope) {

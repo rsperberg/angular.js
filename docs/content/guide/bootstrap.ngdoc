@@ -88,7 +88,7 @@ As a best practice, consider adding an `ng-strict-di` directive on the same elem
 ```
 
 This will ensure that all services in your application are properly annotated.
-See the {@link guide/di#using-strict-dependency-injection dependancy injection strict mode} docs
+See the {@link guide/di#using-strict-dependency-injection dependency injection strict mode} docs
 for more.
 
 
@@ -145,7 +145,7 @@ This is the sequence that your code should follow:
 
 ## Deferred Bootstrap
 
-This feature enables tools like [Batarang](github.com/angular/angularjs-batarang) and test runners
+This feature enables tools like [Batarang](https://github.com/angular/angularjs-batarang) and test runners
 to hook into angular's bootstrap process and sneak in more modules
 into the DI registry which can replace or augment DI services for
 the purpose of instrumentation or mocking out heavy dependencies.

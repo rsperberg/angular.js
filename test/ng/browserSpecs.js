@@ -1,5 +1,7 @@
 'use strict';
 
+/* global getHash:true, stripHash:true */
+
 var historyEntriesLength;
 var sniffer = {};
 
@@ -50,6 +52,12 @@ function MockWindow(options) {
       locationHref = value;
       mockWindow.history.state = null;
       historyEntriesLength++;
+    },
+    get hash() {
+      return getHash(locationHref);
+    },
+    set hash(value) {
+      locationHref = stripHash(locationHref) + '#' + value;
     },
     replace: function(url) {
       locationHref = url;
@@ -337,7 +345,7 @@ describe('browser', function() {
       it('should log warnings when 4kb per cookie storage limit is reached', function() {
         var i, longVal = '', cookieStr;
 
-        for (i=0; i<4083; i++) {
+        for (i = 0; i < 4083; i++) {
           longVal += 'x';
         }
 
@@ -550,6 +558,17 @@ describe('browser', function() {
       expect(locationReplace).not.toHaveBeenCalled();
     });
 
+    it("should retain the # character when the only change is clearing the hash fragment, to prevent page reload", function() {
+      sniffer.history = true;
+
+      browser.url('http://server/#123');
+      expect(fakeWindow.location.href).toEqual('http://server/#123');
+
+      browser.url('http://server/');
+      expect(fakeWindow.location.href).toEqual('http://server/#');
+
+    });
+
     it('should use location.replace when history.replaceState not available', function() {
       sniffer.history = false;
       browser.url('http://new.org', true);
@@ -560,6 +579,7 @@ describe('browser', function() {
       expect(replaceState).not.toHaveBeenCalled();
       expect(fakeWindow.location.href).toEqual('http://server/');
     });
+
 
     it('should use location.replace and not use replaceState when the url only changed in the hash fragment to please IE10/11', function() {
       sniffer.history = true;
@@ -572,10 +592,17 @@ describe('browser', function() {
       expect(fakeWindow.location.href).toEqual('http://server/');
     });
 
+
     it('should return $browser to allow chaining', function() {
       expect(browser.url('http://any.com')).toBe(browser);
     });
 
+    it('should return $browser to allow chaining even if the previous and current URLs and states match', function() {
+      expect(browser.url('http://any.com').url('http://any.com')).toBe(browser);
+      var state = { any: 'foo' };
+      expect(browser.url('http://any.com', false, state).url('http://any.com', false, state)).toBe(browser);
+      expect(browser.url('http://any.com', true, state).url('http://any.com', true, state)).toBe(browser);
+    });
 
     it('should decode single quotes to work around FF bug 407273', function() {
       fakeWindow.location.href = "http://ff-bug/?single%27quote";
@@ -920,7 +947,7 @@ describe('browser', function() {
       });
     }
 
-    describe('update $location when it was changed outside of Angular in sync '+
+    describe('update $location when it was changed outside of Angular in sync ' +
        'before $digest was called', function() {
 
       it('should work with no history support, no html5Mode', function() {

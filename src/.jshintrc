@@ -19,6 +19,7 @@
     "angularModule": false,
     "nodeName_": false,
     "uid": false,
+    "toDebugString": false,
 
     "REGEX_STRING_REGEXP" : false,
     "lowercase": false,
@@ -50,6 +51,7 @@
     "isWindow": false,
     "isScope": false,
     "isFile": false,
+    "isFormData": false,
     "isBlob": false,
     "isBoolean": false,
     "isPromiseLike": false,

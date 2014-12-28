@@ -41,9 +41,10 @@ In Angular applications, you move the job of filling page templates with data fr
 ### Other AngularJS Features
 
 * **Animation:** {@link guide/animations Core concepts}, {@link ngAnimate ngAnimate API}, and [Animation in AngularJS 1.2](http://www.yearofmoo.com/2013/08/remastered-animation-in-angularjs-1-2.html)
-* **Security:** {@link ng.$sce Strict Contextual Escaping}, {@link ng.directive:ngCsp Content Security Policy}, {@link ngSanitize.$sanitize $sanitize}, [video](https://www.youtube.com/watch?v=18ifoT-Id54)
+* **Security:** {@link guide/security Security Docs}, {@link ng.$sce Strict Contextual Escaping}, {@link ng.directive:ngCsp Content Security Policy}, {@link ngSanitize.$sanitize $sanitize}, [video](https://www.youtube.com/watch?v=18ifoT-Id54)
 * **Internationalization and Localization:** {@link guide/i18n Angular Guide to i18n and l10n}, {@link ng.filter:date date filter}, {@link ng.filter:currency currency filter}, [Creating multilingual support](http://www.novanet.no/blog/hallstein-brotan/dates/2013/10/creating-multilingual-support-using-angularjs/)
 * **Mobile:** {@link ngTouch Touch events}
+* **Accessibility:** {@link guide/accessibility ngAria}
 
 ### Testing
 
@@ -61,6 +62,7 @@ In Angular applications, you move the job of filling page templates with data fr
 
 ## Tools
 
+* **Getting Started:** [Comparison of the options for starting a new project](http://www.dancancro.com/comparison-of-angularjs-application-starters/)
 * **Debugging:** [Batarang](https://chrome.google.com/webstore/detail/angularjs-batarang/ighdmehidhipcmcojjgiloacoafjmpfk?hl=en)
 * **Testing:** [Karma](http://karma-runner.github.io), [Protractor](https://github.com/angular/protractor)
 * **Editor support:** [Webstorm](http://plugins.jetbrains.com/plugin/6971) (and [video](http://www.youtube.com/watch?v=LJOyrSh1kDU)), [Sublime Text](https://github.com/angular-ui/AngularJS-sublime-package), [Visual Studio](http://madskristensen.net/post/angularjs-intellisense-in-visual-studio-2012)
@@ -107,6 +109,8 @@ This is a short list of libraries with specific support and documentation for wo
 * [Developing an AngularJS Edge](http://www.amazon.com/Developing-AngularJS-Edge-Christopher-Hiller-ebook/dp/B00CJLFF8K) by Christopher Hiller
 * [ng-book: The Complete Book on AngularJS](http://ng-book.com/) by Ari Lerner
 * [AngularJS : Novice to Ninja](http://www.amazon.in/AngularJS-Novice-Ninja-Sandeep-Panda/dp/0992279453) by Sandeep Panda
+* [AngularJS UI Development](http://www.amazon.com/AngularJS-UI-Development-Amit-Ghart-ebook/dp/B00OXVAK7A) by Amit Gharat and Matthias Nehlsen
+* [Responsive Web Design with AngularJS](http://www.amazon.com/Responsive-Design-AngularJS-Sandeep-Kumar/dp/178439842X) by Sandeep Kumar Patel
 
 ###Videos:
 * [egghead.io](http://egghead.io/)
@@ -115,12 +119,12 @@ This is a short list of libraries with specific support and documentation for wo
 ### Courses
 * **Free online:**
   [thinkster.io](http://thinkster.io),
-  [CodeAcademy](http://www.codecademy.com/courses/javascript-advanced-en-2hJ3J/0/1)
+  [CodeAcademy](http://www.codecademy.com/courses/javascript-advanced-en-2hJ3J/0/1),
   [CodeSchool](https://www.codeschool.com/courses/shaping-up-with-angular-js)
 * **Paid online:**
   [Pluralsite (3 courses)](http://www.pluralsight.com/training/Courses/Find?highlight=true&searchTerm=angularjs),
   [Tuts+](https://tutsplus.com/course/easier-js-apps-with-angular/),
-  [lynda.com](http://www.lynda.com/AngularJS-tutorials/Up-Running-AngularJS/133318-2.html)
+  [lynda.com](http://www.lynda.com/AngularJS-tutorials/Up-Running-AngularJS/133318-2.html),
   [WintellectNOW (4 lessons)](http://www.wintellectnow.com/Course/Detail/mastering-angularjs)
 * **Paid onsite:**
   [angularbootcamp.com](http://angularbootcamp.com/)

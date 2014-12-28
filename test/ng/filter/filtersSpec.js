@@ -85,8 +85,10 @@ describe('filters', function() {
     });
 
     it('should format numbers that round to zero as nonnegative', function() {
-      var num = formatNumber(-0.01, pattern, ',', '.', 1);
-      expect(num).toBe('0.0');
+      expect(formatNumber(-0.01, pattern, ',', '.', 1)).toBe('0.0');
+      expect(formatNumber(-1e-10, pattern, ',', '.', 1)).toBe('0.0');
+      expect(formatNumber(-0.0001, pattern, ',', '.', 3)).toBe('0.000');
+      expect(formatNumber(-0.0000001, pattern, ',', '.', 6)).toBe('0.000000');
     });
   });
 
@@ -120,6 +122,12 @@ describe('filters', function() {
       expect(currency(0.008)).toBe('$0.01');
       expect(currency(0.003)).toBe('$0.00');
     });
+
+    it('should set the default fraction size to the max fraction size of the locale value', inject(function($locale) {
+      $locale.NUMBER_FORMATS.PATTERNS[1].maxFrac = 1;
+
+      expect(currency(1.07)).toBe('$1.1');
+    }));
   });
 
 
@@ -145,7 +153,7 @@ describe('filters', function() {
       expect(number(+Infinity)).toEqual('');
       expect(number(-Infinity)).toEqual('');
       expect(number("1234.5678")).toEqual('1,234.568');
-      expect(number(1/0)).toEqual("");
+      expect(number(1 / 0)).toEqual("");
       expect(number(1,        2)).toEqual("1.00");
       expect(number(.1,       2)).toEqual("0.10");
       expect(number(.01,      2)).toEqual("0.01");
@@ -189,16 +197,21 @@ describe('filters', function() {
       expect(number(1e-50, 0)).toEqual('0');
       expect(number(1e-6, 6)).toEqual('0.000001');
       expect(number(1e-7, 6)).toEqual('0.000000');
+      expect(number(9e-7, 6)).toEqual('0.000001');
 
       expect(number(-1e-50, 0)).toEqual('0');
       expect(number(-1e-6, 6)).toEqual('-0.000001');
-      expect(number(-1e-7, 6)).toEqual('-0.000000');
+      expect(number(-1e-7, 6)).toEqual('0.000000');
+      expect(number(-1e-8, 9)).toEqual('-0.000000010');
     });
   });
 
   describe('json', function() {
     it('should do basic filter', function() {
       expect(filter('json')({a:"b"})).toEqual(toJson({a:"b"}, true));
+    });
+    it('should allow custom indentation', function() {
+      expect(filter('json')({a:"b"}, 4)).toEqual(toJson({a:"b"}, 4));
     });
   });
 
@@ -313,6 +326,36 @@ describe('filters', function() {
                     toEqual('2010-09-03T06:35:08-0530');
     });
 
+    it('should correctly calculate week number', function() {
+      function formatWeek(dateToFormat) {
+        return date(new angular.mock.TzDate(+5, dateToFormat + 'T12:00:00.000Z'), 'ww (EEE)');
+      }
+
+      expect(formatWeek('2007-01-01')).toEqual('01 (Mon)');
+      expect(formatWeek('2007-12-31')).toEqual('53 (Mon)');
+
+      expect(formatWeek('2008-01-01')).toEqual('01 (Tue)');
+      expect(formatWeek('2008-12-31')).toEqual('53 (Wed)');
+
+      expect(formatWeek('2014-01-01')).toEqual('01 (Wed)');
+      expect(formatWeek('2014-12-31')).toEqual('53 (Wed)');
+
+      expect(formatWeek('2009-01-01')).toEqual('01 (Thu)');
+      expect(formatWeek('2009-12-31')).toEqual('53 (Thu)');
+
+      expect(formatWeek('2010-01-01')).toEqual('00 (Fri)');
+      expect(formatWeek('2010-12-31')).toEqual('52 (Fri)');
+
+      expect(formatWeek('2011-01-01')).toEqual('00 (Sat)');
+      expect(formatWeek('2011-01-02')).toEqual('01 (Sun)');
+      expect(formatWeek('2011-01-03')).toEqual('01 (Mon)');
+      expect(formatWeek('2011-12-31')).toEqual('52 (Sat)');
+
+      expect(formatWeek('2012-01-01')).toEqual('01 (Sun)');
+      expect(formatWeek('2012-01-02')).toEqual('01 (Mon)');
+      expect(formatWeek('2012-12-31')).toEqual('53 (Mon)');
+    });
+
     it('should treat single quoted strings as string literals', function() {
       expect(date(midnight, "yyyy'de' 'a'x'dd' 'adZ' h=H:m:saZ")).
                       toEqual('2010de axdd adZ 12=0:5:8AM-0500');
@@ -393,7 +436,7 @@ describe('filters', function() {
     it('should support different degrees of subsecond precision', function() {
       var format = 'yyyy-MM-dd ss';
 
-      var localDay = new Date(Date.UTC(2003, 9-1, 10, 13, 2, 3, 123)).getDate();
+      var localDay = new Date(Date.UTC(2003, 9 - 1, 10, 13, 2, 3, 123)).getDate();
 
       expect(date('2003-09-10T13:02:03.12345678Z', format)).toEqual('2003-09-' + localDay + ' 03');
       expect(date('2003-09-10T13:02:03.1234567Z', format)).toEqual('2003-09-' + localDay + ' 03');

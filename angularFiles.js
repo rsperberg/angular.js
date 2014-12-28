@@ -5,6 +5,7 @@ var angularFiles = {
     'src/minErr.js',
     'src/Angular.js',
     'src/loader.js',
+    'src/stringify.js',
     'src/AngularPublic.js',
     'src/jqLite.js',
     'src/apis.js',
@@ -52,6 +53,7 @@ var angularFiles = {
     'src/ng/directive/form.js',
     'src/ng/directive/input.js',
     'src/ng/directive/ngBind.js',
+    'src/ng/directive/ngChange.js',
     'src/ng/directive/ngClass.js',
     'src/ng/directive/ngCloak.js',
     'src/ng/directive/ngController.js',
@@ -60,6 +62,8 @@ var angularFiles = {
     'src/ng/directive/ngIf.js',
     'src/ng/directive/ngInclude.js',
     'src/ng/directive/ngInit.js',
+    'src/ng/directive/ngList.js',
+    'src/ng/directive/ngModel.js',
     'src/ng/directive/ngNonBindable.js',
     'src/ng/directive/ngPluralize.js',
     'src/ng/directive/ngRepeat.js',
@@ -69,10 +73,12 @@ var angularFiles = {
     'src/ng/directive/ngTransclude.js',
     'src/ng/directive/script.js',
     'src/ng/directive/select.js',
-    'src/ng/directive/style.js'
+    'src/ng/directive/style.js',
+    'src/ng/directive/validators.js'
   ],
 
   'angularLoader': [
+    'stringify.js',
     'src/minErr.js',
     'src/loader.js'
   ],

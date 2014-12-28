@@ -163,7 +163,7 @@ angular.scenario.dsl('expect', function() {
  */
 angular.scenario.dsl('using', function() {
   return function(selector, label) {
-    this.selector = _jQuery.trim((this.selector||'') + ' ' + selector);
+    this.selector = _jQuery.trim((this.selector || '') + ' ' + selector);
     if (angular.isString(label) && label.length) {
       this.label = label + ' ( ' + this.selector + ' )';
     } else {
@@ -199,7 +199,7 @@ angular.scenario.dsl('binding', function() {
  */
 angular.scenario.dsl('input', function() {
   var chain = {};
-  var supportInputEvent =  'oninput' in document.createElement('div') && msie != 9;
+  var supportInputEvent = 'oninput' in document.createElement('div') && !(msie && msie <= 11);
 
   chain.enter = function(value, event) {
     return this.addFutureAction("input '" + this.name + "' enter '" + value + "'",

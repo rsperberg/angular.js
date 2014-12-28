@@ -38,8 +38,45 @@ describe('select', function() {
         };
 
         return equals(expectedValues, actualValues);
+      },
+
+      toEqualSelectWithOptions: function(expected) {
+        var actualValues = {};
+        var optionGroup;
+
+        forEach(this.actual.find('option'), function(option) {
+          optionGroup = option.parentNode.label || '';
+          actualValues[optionGroup] = actualValues[optionGroup] || [];
+          actualValues[optionGroup].push(option.label);
+        });
+
+        this.message = function() {
+          return 'Expected ' + toJson(actualValues) + ' to equal ' + toJson(expected) + '.';
+        };
+
+        return equals(expected, actualValues);
+      },
+
+      toEqualOption: function(value, text, label) {
+        var errors = [];
+        if (this.actual.attr('value') !== value) {
+          errors.push('Expected option value "' + this.actual.attr('value') + '" to equal "' + value + '"');
+        }
+        if (text && this.actual.text() !== text) {
+          errors.push('Expected option value "' + this.actual.attr('value') + '" to equal "' + value + '"');
+        }
+        if (label && this.actual.attr('label') !== label) {
+          errors.push('Expected option value "' + this.actual.attr('value') + '" to equal "' + value + '"');
+        }
+
+        this.message = function() {
+          return errors.join('\n');
+        };
+
+        return errors.length === 0;
       }
     });
+
   });
 
 
@@ -213,6 +250,31 @@ describe('select', function() {
         expect(scope.robot).toBe('');
       });
 
+      it('should not be set when an option is selected and options are set asynchronously',
+        inject(function($timeout) {
+          compile('<select ng-model="model" ng-options="opt.id as opt.label for opt in options">' +
+                      '</select>');
+
+          scope.$apply(function() {
+            scope.model = 0;
+          });
+
+          $timeout(function() {
+            scope.options = [
+              {id: 0, label: 'x'},
+              {id: 1, label: 'y'}
+            ];
+          }, 0);
+
+          $timeout.flush();
+
+          var options = element.find('option');
+
+          expect(options.length).toEqual(2);
+          expect(options.eq(0)).toEqualOption('0', 'x');
+          expect(options.eq(1)).toEqualOption('1', 'y');
+        })
+      );
 
       describe('interactions with repeated options', function() {
 
@@ -427,6 +489,7 @@ describe('select', function() {
             expect(selectCtrl.hasOption('r2d2')).toBe(true);
           });
 
+
           it('should return false for options popped via ngOptions', function() {
             scope.robots = [
               {value: 1, label: 'c3p0'},
@@ -447,6 +510,7 @@ describe('select', function() {
             expect(selectCtrl.hasOption('r2d2')).toBe(false);
           });
 
+
           it('should return true for options added via ngOptions', function() {
             scope.robots = [
               {value: 2, label: 'r2d2'}
@@ -464,6 +528,169 @@ describe('select', function() {
 
             expect(selectCtrl.hasOption('c3p0')).toBe(true);
             expect(selectCtrl.hasOption('r2d2')).toBe(true);
+          });
+
+
+          it('should keep all the options when changing the model', function() {
+            compile('<select ng-model="mySelect" ng-options="o for o in [\'A\',\'B\',\'C\']"></select>');
+            var selectCtrl = element.controller('select');
+            scope.$apply(function() {
+              scope.mySelect = 'C';
+            });
+            expect(selectCtrl.hasOption('A')).toBe(true);
+            expect(selectCtrl.hasOption('B')).toBe(true);
+            expect(selectCtrl.hasOption('C')).toBe(true);
+            expect(element).toEqualSelectWithOptions({'': ['A', 'B', 'C']});
+          });
+
+
+          it('should be able to detect when elements move from a previous group', function() {
+            scope.values = [
+              {name: 'A'},
+              {name: 'B', group: 'first'},
+              {name: 'C', group: 'first'},
+              {name: 'D', group: 'first'},
+              {name: 'E', group: 'second'}
+            ];
+
+            compile('<select ng-model="mySelect" ng-options="item.name group by item.group for item in values"></select>');
+            var selectCtrl = element.data().$selectController;
+
+            scope.$apply(function() {
+              scope.values[3] = {name: 'D', group: 'second'};
+              scope.values.shift();
+            });
+            expect(selectCtrl.hasOption('A')).toBe(false);
+            expect(selectCtrl.hasOption('B')).toBe(true);
+            expect(selectCtrl.hasOption('C')).toBe(true);
+            expect(selectCtrl.hasOption('D')).toBe(true);
+            expect(selectCtrl.hasOption('E')).toBe(true);
+            expect(element).toEqualSelectWithOptions({'': [''], 'first':['B', 'C'], 'second': ['D', 'E']});
+          });
+
+
+          it('should be able to detect when elements move from a following group', function() {
+            scope.values = [
+              {name: 'A'},
+              {name: 'B', group: 'first'},
+              {name: 'C', group: 'first'},
+              {name: 'D', group: 'second'},
+              {name: 'E', group: 'second'}
+            ];
+
+            compile('<select ng-model="mySelect" ng-options="item.name group by item.group for item in values"></select>');
+            var selectCtrl = element.data().$selectController;
+
+            scope.$apply(function() {
+              scope.values[3].group = 'first';
+              scope.values.shift();
+            });
+            expect(selectCtrl.hasOption('A')).toBe(false);
+            expect(selectCtrl.hasOption('B')).toBe(true);
+            expect(selectCtrl.hasOption('C')).toBe(true);
+            expect(selectCtrl.hasOption('D')).toBe(true);
+            expect(selectCtrl.hasOption('E')).toBe(true);
+            expect(element).toEqualSelectWithOptions({'': [''], 'first':['B', 'C', 'D'], 'second': ['E']});
+          });
+
+
+          it('should be able to detect when an element is replaced with an element from a previous group', function() {
+            scope.values = [
+              {name: 'A'},
+              {name: 'B', group: 'first'},
+              {name: 'C', group: 'first'},
+              {name: 'D', group: 'first'},
+              {name: 'E', group: 'second'},
+              {name: 'F', group: 'second'}
+            ];
+
+            compile('<select ng-model="mySelect" ng-options="item.name group by item.group for item in values"></select>');
+            var selectCtrl = element.data().$selectController;
+
+            scope.$apply(function() {
+              scope.values[3].group = 'second';
+              scope.values.pop();
+            });
+            expect(selectCtrl.hasOption('A')).toBe(true);
+            expect(selectCtrl.hasOption('B')).toBe(true);
+            expect(selectCtrl.hasOption('C')).toBe(true);
+            expect(selectCtrl.hasOption('D')).toBe(true);
+            expect(selectCtrl.hasOption('E')).toBe(true);
+            expect(selectCtrl.hasOption('F')).toBe(false);
+            expect(element).toEqualSelectWithOptions({'': ['', 'A'], 'first':['B', 'C'], 'second': ['D', 'E']});
+          });
+
+
+          it('should be able to detect when element is replaced with an element from a following group', function() {
+            scope.values = [
+              {name: 'A'},
+              {name: 'B', group: 'first'},
+              {name: 'C', group: 'first'},
+              {name: 'D', group: 'second'},
+              {name: 'E', group: 'second'}
+            ];
+
+            compile('<select ng-model="mySelect" ng-options="item.name group by item.group for item in values"></select>');
+            var selectCtrl = element.data().$selectController;
+
+            scope.$apply(function() {
+              scope.values[3].group = 'first';
+              scope.values.splice(2, 1);
+            });
+            expect(selectCtrl.hasOption('A')).toBe(true);
+            expect(selectCtrl.hasOption('B')).toBe(true);
+            expect(selectCtrl.hasOption('C')).toBe(false);
+            expect(selectCtrl.hasOption('D')).toBe(true);
+            expect(selectCtrl.hasOption('E')).toBe(true);
+            expect(element).toEqualSelectWithOptions({'': ['', 'A'], 'first':['B', 'D'], 'second': ['E']});
+          });
+
+
+          it('should be able to detect when an element is removed', function() {
+            scope.values = [
+              {name: 'A'},
+              {name: 'B', group: 'first'},
+              {name: 'C', group: 'first'},
+              {name: 'D', group: 'second'},
+              {name: 'E', group: 'second'}
+            ];
+
+            compile('<select ng-model="mySelect" ng-options="item.name group by item.group for item in values"></select>');
+            var selectCtrl = element.data().$selectController;
+
+            scope.$apply(function() {
+              scope.values.splice(3, 1);
+            });
+            expect(selectCtrl.hasOption('A')).toBe(true);
+            expect(selectCtrl.hasOption('B')).toBe(true);
+            expect(selectCtrl.hasOption('C')).toBe(true);
+            expect(selectCtrl.hasOption('D')).toBe(false);
+            expect(selectCtrl.hasOption('E')).toBe(true);
+            expect(element).toEqualSelectWithOptions({'': ['', 'A'], 'first':['B', 'C'], 'second': ['E']});
+          });
+
+
+          it('should be able to detect when a group is removed', function() {
+            scope.values = [
+              {name: 'A'},
+              {name: 'B', group: 'first'},
+              {name: 'C', group: 'first'},
+              {name: 'D', group: 'second'},
+              {name: 'E', group: 'second'}
+            ];
+
+            compile('<select ng-model="mySelect" ng-options="item.name group by item.group for item in values"></select>');
+            var selectCtrl = element.data().$selectController;
+
+            scope.$apply(function() {
+              scope.values.splice(3, 2);
+            });
+            expect(selectCtrl.hasOption('A')).toBe(true);
+            expect(selectCtrl.hasOption('B')).toBe(true);
+            expect(selectCtrl.hasOption('C')).toBe(true);
+            expect(selectCtrl.hasOption('D')).toBe(false);
+            expect(selectCtrl.hasOption('E')).toBe(false);
+            expect(element).toEqualSelectWithOptions({'': ['', 'A'], 'first':['B', 'C']});
           });
         });
       });
@@ -756,9 +983,9 @@ describe('select', function() {
 
         var options = element.find('option');
         expect(options.length).toEqual(3);
-        expect(sortedHtml(options[0])).toEqual('<option value="?"></option>');
-        expect(sortedHtml(options[1])).toEqual('<option value="10">ten</option>');
-        expect(sortedHtml(options[2])).toEqual('<option value="20">twenty</option>');
+        expect(options.eq(0)).toEqualOption('?', '');
+        expect(options.eq(1)).toEqualOption('10', 'ten');
+        expect(options.eq(2)).toEqualOption('20', 'twenty');
       });
 
       it('should preserve value even when reference has changed (single&array)', function() {
@@ -1047,9 +1274,9 @@ describe('select', function() {
 
       var options = element.find('option');
       expect(options.length).toEqual(3);
-      expect(sortedHtml(options[0])).toEqual('<option value="0">A</option>');
-      expect(sortedHtml(options[1])).toEqual('<option value="1">B</option>');
-      expect(sortedHtml(options[2])).toEqual('<option value="2">C</option>');
+      expect(options.eq(0)).toEqualOption('0', 'A');
+      expect(options.eq(1)).toEqualOption('1', 'B');
+      expect(options.eq(2)).toEqualOption('2', 'C');
     });
 
     it('should render zero as a valid display value', function() {
@@ -1062,9 +1289,9 @@ describe('select', function() {
 
       var options = element.find('option');
       expect(options.length).toEqual(3);
-      expect(sortedHtml(options[0])).toEqual('<option value="0">0</option>');
-      expect(sortedHtml(options[1])).toEqual('<option value="1">1</option>');
-      expect(sortedHtml(options[2])).toEqual('<option value="2">2</option>');
+      expect(options.eq(0)).toEqualOption('0', '0');
+      expect(options.eq(1)).toEqualOption('1', '1');
+      expect(options.eq(2)).toEqualOption('2', '2');
     });
 
 
@@ -1081,9 +1308,9 @@ describe('select', function() {
 
       var options = element.find('option');
       expect(options.length).toEqual(3);
-      expect(sortedHtml(options[0])).toEqual('<option value="blue">blue</option>');
-      expect(sortedHtml(options[1])).toEqual('<option value="green">green</option>');
-      expect(sortedHtml(options[2])).toEqual('<option value="red">red</option>');
+      expect(options.eq(0)).toEqualOption('blue', 'blue');
+      expect(options.eq(1)).toEqualOption('green', 'green');
+      expect(options.eq(2)).toEqualOption('red', 'red');
       expect(options[2].selected).toEqual(true);
 
       scope.$apply(function() {
@@ -1103,7 +1330,7 @@ describe('select', function() {
       });
 
       expect(element.find('option').length).toEqual(1); // because we add special empty option
-      expect(sortedHtml(element.find('option')[0])).toEqual('<option value="?"></option>');
+      expect(element.find('option')).toEqualOption('?','');
 
       scope.$apply(function() {
         scope.values.push({name:'A'});
@@ -1111,15 +1338,15 @@ describe('select', function() {
       });
 
       expect(element.find('option').length).toEqual(1);
-      expect(sortedHtml(element.find('option')[0])).toEqual('<option value="0">A</option>');
+      expect(element.find('option')).toEqualOption('0', 'A');
 
       scope.$apply(function() {
         scope.values.push({name:'B'});
       });
 
       expect(element.find('option').length).toEqual(2);
-      expect(sortedHtml(element.find('option')[0])).toEqual('<option value="0">A</option>');
-      expect(sortedHtml(element.find('option')[1])).toEqual('<option value="1">B</option>');
+      expect(element.find('option').eq(0)).toEqualOption('0', 'A');
+      expect(element.find('option').eq(1)).toEqualOption('1', 'B');
     });
 
 
@@ -1138,15 +1365,15 @@ describe('select', function() {
       });
 
       expect(element.find('option').length).toEqual(2);
-      expect(sortedHtml(element.find('option')[0])).toEqual('<option value="0">A</option>');
-      expect(sortedHtml(element.find('option')[1])).toEqual('<option value="1">B</option>');
+      expect(element.find('option').eq(0)).toEqualOption('0', 'A');
+      expect(element.find('option').eq(1)).toEqualOption('1', 'B');
 
       scope.$apply(function() {
         scope.values.pop();
       });
 
       expect(element.find('option').length).toEqual(1);
-      expect(sortedHtml(element.find('option')[0])).toEqual('<option value="0">A</option>');
+      expect(element.find('option')).toEqualOption('0', 'A');
 
       scope.$apply(function() {
         scope.values.pop();
@@ -1198,9 +1425,9 @@ describe('select', function() {
 
       var options = element.find('option');
       expect(options.length).toEqual(3);
-      expect(sortedHtml(options[0])).toEqual('<option value="0">B</option>');
-      expect(sortedHtml(options[1])).toEqual('<option value="1">C</option>');
-      expect(sortedHtml(options[2])).toEqual('<option value="2">D</option>');
+      expect(options.eq(0)).toEqualOption('0', 'B');
+      expect(options.eq(1)).toEqualOption('1', 'C');
+      expect(options.eq(2)).toEqualOption('2', 'D');
     });
 
 
@@ -1244,7 +1471,7 @@ describe('select', function() {
 
       var options = element.find('option');
       expect(options.length).toEqual(1);
-      expect(sortedHtml(options[0])).toEqual('<option value="regularProperty">visible</option>');
+      expect(options.eq(0)).toEqualOption('regularProperty', 'visible');
     });
 
     it('should allow expressions over multiple lines', function() {
@@ -1268,8 +1495,8 @@ describe('select', function() {
 
       var options = element.find('option');
       expect(options.length).toEqual(3);
-      expect(sortedHtml(options[1])).toEqual('<option value="0">2</option>');
-      expect(sortedHtml(options[2])).toEqual('<option value="1">3</option>');
+      expect(options.eq(1)).toEqualOption('0', '2');
+      expect(options.eq(2)).toEqualOption('1', '3');
     });
 
     it('should not update selected property of an option element on digest with no change event',
@@ -1298,6 +1525,23 @@ describe('select', function() {
 
       expect(optionToSelect.prop('selected')).toBe(true);
       expect(scope.selected).toBe(scope.values[0]);
+    });
+
+    // bug fix #9621
+    it('should update the label property', function() {
+      // ng-options="value.name for value in values"
+      // ng-model="selected"
+      createSingleSelect();
+
+      scope.$apply(function() {
+        scope.values = [{name: 'A'}, {name: 'B'}, {name: 'C'}];
+        scope.selected = scope.values[0];
+      });
+
+      var options = element.find('option');
+      expect(options.eq(0).prop('label')).toEqual('A');
+      expect(options.eq(1).prop('label')).toEqual('B');
+      expect(options.eq(2).prop('label')).toEqual('C');
     });
 
     describe('binding', function() {
@@ -1426,8 +1670,8 @@ describe('select', function() {
 
         var options = element.find('option');
         expect(options.length).toEqual(2);
-        expect(sortedHtml(options[0])).toEqual('<option value="0">C</option>');
-        expect(sortedHtml(options[1])).toEqual('<option value="1">B</option>');
+        expect(options.eq(0)).toEqualOption('0', 'C');
+        expect(options.eq(1)).toEqualOption('1', 'B');
       });
 
 
@@ -1447,8 +1691,8 @@ describe('select', function() {
 
         var options = element.find('option');
         expect(options.length).toEqual(2);
-        expect(sortedHtml(options[0])).toEqual('<option value="a">C</option>');
-        expect(sortedHtml(options[1])).toEqual('<option value="b">B</option>');
+        expect(options.eq(0)).toEqualOption('a', 'C');
+        expect(options.eq(1)).toEqualOption('b', 'B');
       });
 
 
@@ -1628,6 +1872,20 @@ describe('select', function() {
         });
         expect(element.val()).toEqual('?');
         expect(element.find('option').eq(0).attr('selected')).toEqual('selected');
+      });
+
+
+      it('should select the correct option for selectAs and falsy values', function() {
+        scope.values = [{value: 0, label: 'zero'}, {value: 1, label: 'one'}];
+        scope.selected = '';
+        createSelect({
+          'ng-model': 'selected',
+          'ng-options': 'option.value as option.label for option in values'
+        });
+
+        var option = element.find('option').eq(0);
+        expect(option.val()).toBe('?');
+        expect(option.text()).toBe('');
       });
     });
 
@@ -2178,8 +2436,8 @@ describe('select', function() {
     it('should throw an exception if an option value interpolates to "hasOwnProperty"', function() {
       scope.hasOwnPropertyOption = "hasOwnProperty";
       expect(function() {
-        compile('<select ng-model="x">'+
-                  '<option>{{hasOwnPropertyOption}}</option>'+
+        compile('<select ng-model="x">' +
+                  '<option>{{hasOwnPropertyOption}}</option>' +
                 '</select>');
       }).toThrowMinErr('ng','badname', 'hasOwnProperty is not a valid "option value" name');
     });
